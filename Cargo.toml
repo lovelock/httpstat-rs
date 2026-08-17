@@ -1,0 +1,9 @@
+[package]
+name = "httpstat"
+version = "0.1.0"
+edition = "2021"
+description = "curl statistics made simple — Rust rewrite"
+
+[dependencies]
+curl = { version = "0.4", features = ["static-curl", "static-ssl"] }
+clap = { version = "4", features = ["derive"] }
