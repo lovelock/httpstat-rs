@@ -115,17 +115,12 @@ pub fn print_pretty(
     // Timing diagram — exact column positions matching Python httpstat template
     // Pipes at columns: 13, 30, 46, 66, 85 (0-indexed)
     let b = |s: &str| colorize(s, CYAN, use_color);
+    let a = |ms: i64| format!("{:^7}", format!("{}ms", ms));
 
     if t.is_https() {
-        // Bracket row: [   {a0000}  |     {a0001}    |    {a0002}    |      {a0003}      |      {a0004}     ]
         println!("  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer");
-        println!("[{} | {} | {} | {} | {} ]",
-            &format!("   {}  ", b(&format!("{:^7}", format!("{}ms", dns)))),
-            &format!("     {}    ", b(&format!("{:^7}", format!("{}ms", connect)))),
-            &format!("    {}    ", b(&format!("{:^7}", format!("{}ms", tls)))),
-            &format!("      {}      ", b(&format!("{:^7}", format!("{}ms", server)))),
-            &format!("      {}     ", b(&format!("{:^7}", format!("{}ms", transfer)))),
-        );
+        println!("[   {}  |     {}    |    {}    |      {}      |      {}     ]",
+            b(&a(dns)), b(&a(connect)), b(&a(tls)), b(&a(server)), b(&a(transfer)));
         // Pipe row
         println!("             |                |               |                   |                  |");
         // Label rows — pipe at col 30, 46, 66, 85
@@ -142,12 +137,8 @@ pub fn print_pretty(
     } else {
         // HTTP template (no TLS column)
         println!("  DNS Lookup   TCP Connection   Server Processing   Content Transfer");
-        println!("[{} | {} | {} | {} ]",
-            &format!("   {}  ", b(&format!("{:^7}", format!("{}ms", dns)))),
-            &format!("     {}    ", b(&format!("{:^7}", format!("{}ms", connect)))),
-            &format!("      {}      ", b(&format!("{:^7}", format!("{}ms", server)))),
-            &format!("      {}     ", b(&format!("{:^7}", format!("{}ms", transfer)))),
-        );
+        println!("[   {}  |     {}    |      {}      |      {}     ]",
+            b(&a(dns)), b(&a(connect)), b(&a(server)), b(&a(transfer)));
         println!("             |                |                   |                  |");
         println!("    {}{}        |                   |                  |",
             b("namelookup:"), b(&format!("{:<7}", format!("{}ms", namelookup_ms))));
