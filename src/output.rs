@@ -14,18 +14,6 @@ fn colorize(s: &str, color: &str, use_color: bool) -> String {
     }
 }
 
-/// Format a value for the bracket row (centered, 7 chars)
-fn fmta(ms: i64, use_color: bool) -> String {
-    let s = format!("{:^7}", format!("{}ms", ms));
-    colorize(&s, CYAN, use_color)
-}
-
-/// Format a value for the label row (left-aligned, 7 chars)
-fn fmtb(ms: i64, use_color: bool) -> String {
-    let s = format!("{:<7}", format!("{}ms", ms));
-    colorize(&s, CYAN, use_color)
-}
-
 pub struct PrettyOptions {
     pub show_body: bool,
     pub show_ip: bool,
@@ -124,110 +112,51 @@ pub fn print_pretty(
         }
     }
 
-    // Timing diagram — matches Python httpstat template exactly
-    let g = |s: &str| if use_color { format!("\x1b[38;5;242m{}\x1b[0m", s) } else { s.to_string() };
+    // Timing diagram — exact column positions matching Python httpstat template
+    // Pipes at columns: 13, 30, 46, 66, 85 (0-indexed)
+    let b = |s: &str| colorize(s, CYAN, use_color);
 
     if t.is_https() {
+        // Bracket row: [   {a0000}  |     {a0001}    |    {a0002}    |      {a0003}      |      {a0004}     ]
         println!("  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer");
-        println!(
-            "[{} | {} | {} | {} | {} ]",
-            fmta(dns, use_color), fmta(connect, use_color),
-            fmta(tls, use_color), fmta(server, use_color), fmta(transfer, use_color),
+        println!("[{} | {} | {} | {} | {} ]",
+            &format!("   {}  ", b(&format!("{:^7}", format!("{}ms", dns)))),
+            &format!("     {}    ", b(&format!("{:^7}", format!("{}ms", connect)))),
+            &format!("    {}    ", b(&format!("{:^7}", format!("{}ms", tls)))),
+            &format!("      {}      ", b(&format!("{:^7}", format!("{}ms", server)))),
+            &format!("      {}     ", b(&format!("{:^7}", format!("{}ms", transfer)))),
         );
-        println!(
-            "{}",
-            format!(
-                " {}|{} {}|{} {}|{} {}|{} {}|{}",
-                g("          "), g(""), g("             "), g(""),
-                g("              "), g(""), g("                   "), g(""),
-                g("                  "), g(""),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "    {}{}        {}               {}                   {}                  {}",
-                g("namelookup:"), fmtb(namelookup_ms, use_color),
-                g("|"), g("|"), g("|"), g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                        {}{}       {}                   {}                  {}",
-                g("connect:"), fmtb(connect_ms, use_color),
-                g("|"), g("|"), g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                                    {}{}           {}                  {}",
-                g("pretransfer:"), fmtb(pretransfer_ms, use_color),
-                g("|"), g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                                                      {}{}          {}",
-                g("starttransfer:"), fmtb(starttransfer_ms, use_color),
-                g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                                                                                 {}{}",
-                g("total:"), fmtb(total_ms, use_color),
-            )
-        );
+        // Pipe row
+        println!("             |                |               |                   |                  |");
+        // Label rows — pipe at col 30, 46, 66, 85
+        println!("    {}{}        |               |                   |                  |",
+            b("namelookup:"), b(&format!("{:<7}", format!("{}ms", namelookup_ms))));
+        println!("                        {}{}       |                   |                  |",
+            b("connect:"), b(&format!("{:<7}", format!("{}ms", connect_ms))));
+        println!("                                    {}{}           |                  |",
+            b("pretransfer:"), b(&format!("{:<7}", format!("{}ms", pretransfer_ms))));
+        println!("                                                      {}{}          |",
+            b("starttransfer:"), b(&format!("{:<7}", format!("{}ms", starttransfer_ms))));
+        println!("                                                                                 {}{}",
+            b("total:"), b(&format!("{:<7}", format!("{}ms", total_ms))));
     } else {
+        // HTTP template (no TLS column)
         println!("  DNS Lookup   TCP Connection   Server Processing   Content Transfer");
-        println!(
-            "[{} | {} | {} | {} ]",
-            fmta(dns, use_color), fmta(connect, use_color),
-            fmta(server, use_color), fmta(transfer, use_color),
+        println!("[{} | {} | {} | {} ]",
+            &format!("   {}  ", b(&format!("{:^7}", format!("{}ms", dns)))),
+            &format!("     {}    ", b(&format!("{:^7}", format!("{}ms", connect)))),
+            &format!("      {}      ", b(&format!("{:^7}", format!("{}ms", server)))),
+            &format!("      {}     ", b(&format!("{:^7}", format!("{}ms", transfer)))),
         );
-        println!(
-            "{}",
-            format!(
-                " {}|{} {}|{} {}|{} {}|{}",
-                g("          "), g(""), g("             "), g(""),
-                g("                   "), g(""), g("                  "), g(""),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "    {}{}        {}                   {}                  {}",
-                g("namelookup:"), fmtb(namelookup_ms, use_color),
-                g("|"), g("|"), g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                        {}{}           {}                  {}",
-                g("connect:"), fmtb(connect_ms, use_color),
-                g("|"), g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                                    {}{}           {}",
-                g("starttransfer:"), fmtb(starttransfer_ms, use_color),
-                g("|"),
-            )
-        );
-        println!(
-            "{}",
-            format!(
-                "                                                             {}{}",
-                g("total:"), fmtb(total_ms, use_color),
-            )
-        );
+        println!("             |                |                   |                  |");
+        println!("    {}{}        |                   |                  |",
+            b("namelookup:"), b(&format!("{:<7}", format!("{}ms", namelookup_ms))));
+        println!("                        {}{}           |                  |",
+            b("connect:"), b(&format!("{:<7}", format!("{}ms", connect_ms))));
+        println!("                                    {}{}           |",
+            b("starttransfer:"), b(&format!("{:<7}", format!("{}ms", starttransfer_ms))));
+        println!("                                                             {}{}",
+            b("total:"), b(&format!("{:<7}", format!("{}ms", total_ms))));
     }
 
     // Speed
