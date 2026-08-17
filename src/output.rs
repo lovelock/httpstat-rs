@@ -4,6 +4,7 @@ const RESET: &str = "\x1b[0m";
 const CYAN: &str = "\x1b[36m";
 const GREEN: &str = "\x1b[32m";
 const GRAY: &str = "\x1b[38;5;242m";
+const RED: &str = "\x1b[31m";
 
 fn colorize(s: &str, color: &str, use_color: bool) -> String {
     if use_color {
@@ -13,13 +14,15 @@ fn colorize(s: &str, color: &str, use_color: bool) -> String {
     }
 }
 
+/// Format a value for the bracket row (centered, 7 chars)
 fn fmta(ms: i64, use_color: bool) -> String {
-    let s = format!("{:>5}ms", ms);
+    let s = format!("{:^7}", format!("{}ms", ms));
     colorize(&s, CYAN, use_color)
 }
 
+/// Format a value for the label row (left-aligned, 7 chars)
 fn fmtb(ms: i64, use_color: bool) -> String {
-    let s = format!("{:<5}ms", ms);
+    let s = format!("{:<7}", format!("{}ms", ms));
     colorize(&s, CYAN, use_color)
 }
 
@@ -40,16 +43,16 @@ pub fn print_pretty(
     opts: &PrettyOptions,
     use_color: bool,
 ) {
-    let dns = (t.range_dns() * 1000.0) as i64;
-    let connect = (t.range_connect() * 1000.0) as i64;
-    let tls = (t.range_tls() * 1000.0) as i64;
-    let server = (t.range_server() * 1000.0) as i64;
-    let transfer = (t.range_transfer() * 1000.0) as i64;
-    let total_ms = (t.total * 1000.0) as i64;
-    let namelookup_ms = (t.namelookup * 1000.0) as i64;
-    let connect_ms = (t.connect * 1000.0) as i64;
-    let pretransfer_ms = (t.pretransfer * 1000.0) as i64;
-    let starttransfer_ms = (t.starttransfer * 1000.0) as i64;
+    let dns = (t.range_dns() * 1000.0).round() as i64;
+    let connect = (t.range_connect() * 1000.0).round() as i64;
+    let tls = (t.range_tls() * 1000.0).round() as i64;
+    let server = (t.range_server() * 1000.0).round() as i64;
+    let transfer = (t.range_transfer() * 1000.0).round() as i64;
+    let total_ms = (t.total * 1000.0).round() as i64;
+    let namelookup_ms = (t.namelookup * 1000.0).round() as i64;
+    let connect_ms = (t.connect * 1000.0).round() as i64;
+    let pretransfer_ms = (t.pretransfer * 1000.0).round() as i64;
+    let starttransfer_ms = (t.starttransfer * 1000.0).round() as i64;
 
     // IP info
     if opts.show_ip {
@@ -69,23 +72,20 @@ pub fn print_pretty(
             let parts: Vec<&str> = line.splitn(2, '/').collect();
             if parts.len() == 2 {
                 println!(
-                    "{}{}{}{}",
+                    "{}{}{}",
                     colorize(parts[0], GREEN, use_color),
                     colorize("/", GRAY, use_color),
                     colorize(parts[1], CYAN, use_color),
-                    ""
                 );
             } else {
                 println!("{}", colorize(line, GREEN, use_color));
             }
-        } else {
-            if let Some(pos) = line.find(':') {
-                println!(
-                    "{}{}",
-                    colorize(&line[..pos + 1], GRAY, use_color),
-                    colorize(&line[pos + 1..], CYAN, use_color),
-                );
-            }
+        } else if let Some(pos) = line.find(':') {
+            println!(
+                "{}{}",
+                colorize(&line[..pos + 1], GRAY, use_color),
+                colorize(&line[pos + 1..], CYAN, use_color),
+            );
         }
     }
     println!();
@@ -114,23 +114,120 @@ pub fn print_pretty(
                 println!("{}", body);
             }
         }
-    } else {
-        if opts.save_body {
-            if let Some(path) = &opts.body_path {
-                println!(
-                    "{} stored in: {}",
-                    colorize("Body", GREEN, use_color),
-                    path,
-                );
-            }
+    } else if opts.save_body {
+        if let Some(path) = &opts.body_path {
+            println!(
+                "{} stored in: {}",
+                colorize("Body", GREEN, use_color),
+                path,
+            );
         }
     }
 
-    // Timing diagram
+    // Timing diagram — matches Python httpstat template exactly
+    let g = |s: &str| if use_color { format!("\x1b[38;5;242m{}\x1b[0m", s) } else { s.to_string() };
+
     if t.is_https() {
-        print_https(dns, connect, tls, server, transfer, total_ms, namelookup_ms, connect_ms, pretransfer_ms, starttransfer_ms, use_color);
+        println!("  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer");
+        println!(
+            "[{} | {} | {} | {} | {} ]",
+            fmta(dns, use_color), fmta(connect, use_color),
+            fmta(tls, use_color), fmta(server, use_color), fmta(transfer, use_color),
+        );
+        println!(
+            "{}",
+            format!(
+                " {}|{} {}|{} {}|{} {}|{} {}|{}",
+                g("          "), g(""), g("             "), g(""),
+                g("              "), g(""), g("                   "), g(""),
+                g("                  "), g(""),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "    {}{}        {}               {}                   {}                  {}",
+                g("namelookup:"), fmtb(namelookup_ms, use_color),
+                g("|"), g("|"), g("|"), g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                        {}{}       {}                   {}                  {}",
+                g("connect:"), fmtb(connect_ms, use_color),
+                g("|"), g("|"), g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                                    {}{}           {}                  {}",
+                g("pretransfer:"), fmtb(pretransfer_ms, use_color),
+                g("|"), g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                                                      {}{}          {}",
+                g("starttransfer:"), fmtb(starttransfer_ms, use_color),
+                g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                                                                                 {}{}",
+                g("total:"), fmtb(total_ms, use_color),
+            )
+        );
     } else {
-        print_http(dns, connect, server, transfer, total_ms, namelookup_ms, connect_ms, starttransfer_ms, use_color);
+        println!("  DNS Lookup   TCP Connection   Server Processing   Content Transfer");
+        println!(
+            "[{} | {} | {} | {} ]",
+            fmta(dns, use_color), fmta(connect, use_color),
+            fmta(server, use_color), fmta(transfer, use_color),
+        );
+        println!(
+            "{}",
+            format!(
+                " {}|{} {}|{} {}|{} {}|{}",
+                g("          "), g(""), g("             "), g(""),
+                g("                   "), g(""), g("                  "), g(""),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "    {}{}        {}                   {}                  {}",
+                g("namelookup:"), fmtb(namelookup_ms, use_color),
+                g("|"), g("|"), g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                        {}{}           {}                  {}",
+                g("connect:"), fmtb(connect_ms, use_color),
+                g("|"), g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                                    {}{}           {}",
+                g("starttransfer:"), fmtb(starttransfer_ms, use_color),
+                g("|"),
+            )
+        );
+        println!(
+            "{}",
+            format!(
+                "                                                             {}{}",
+                g("total:"), fmtb(total_ms, use_color),
+            )
+        );
     }
 
     // Speed
@@ -150,108 +247,9 @@ pub fn print_slo_violations(violations: &[crate::timing::SloViolation], use_colo
             "{}",
             colorize(
                 &format!("SLO VIOLATION: {} = {}ms (threshold: {}ms)", v.key, v.actual_ms, v.threshold_ms),
-                "\x1b[31m", // red
+                RED,
                 use_color,
             )
         );
     }
-}
-
-fn print_https(
-    dns: i64, connect: i64, tls: i64, server: i64, transfer: i64,
-    total_ms: i64, namelookup_ms: i64, connect_ms: i64, pretransfer_ms: i64, starttransfer_ms: i64,
-    use_color: bool,
-) {
-    let gray = |s: &str| colorize(s, GRAY, use_color);
-
-    println!("  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer");
-    println!(
-        "[{} | {} | {} | {} | {} ]",
-        fmta(dns, use_color),
-        fmta(connect, use_color),
-        fmta(tls, use_color),
-        fmta(server, use_color),
-        fmta(transfer, use_color),
-    );
-    println!(
-        " {}|{} {}|{} {}|{} {}|{} {}|{}",
-        gray("          "), gray(""),
-        gray("             "), gray(""),
-        gray("              "), gray(""),
-        gray("                   "), gray(""),
-        gray("                  "), gray(""),
-    );
-    println!(
-        "  {}{}          {}|{}                   {}|{}                   {}|{}",
-        gray("namelookup:"), fmtb(namelookup_ms, use_color),
-        gray(""), gray(""),
-        gray(""), gray(""),
-        gray(""), gray(""),
-    );
-    println!(
-        "                   {}{}          {}|{}                   {}|{}",
-        gray("connect:"), fmtb(connect_ms, use_color),
-        gray(""), gray(""),
-        gray(""), gray(""),
-    );
-    println!(
-        "                                {}{}           {}|{}",
-        gray("pretransfer:"), fmtb(pretransfer_ms, use_color),
-        gray(""), gray(""),
-    );
-    println!(
-        "                                                    {}{}         |{}",
-        gray("starttransfer:"), fmtb(starttransfer_ms, use_color),
-        gray(""),
-    );
-    println!(
-        "                                                                              {}{}",
-        gray("total:"),
-        fmtb(total_ms, use_color),
-    );
-}
-
-fn print_http(
-    dns: i64, connect: i64, server: i64, transfer: i64,
-    total_ms: i64, namelookup_ms: i64, connect_ms: i64, starttransfer_ms: i64,
-    use_color: bool,
-) {
-    let gray = |s: &str| colorize(s, GRAY, use_color);
-
-    println!("  DNS Lookup   TCP Connection   Server Processing   Content Transfer");
-    println!(
-        "[{} | {} | {} | {} ]",
-        fmta(dns, use_color),
-        fmta(connect, use_color),
-        fmta(server, use_color),
-        fmta(transfer, use_color),
-    );
-    println!(
-        " {}|{} {}|{} {}|{} {}|{}",
-        gray("          "), gray(""),
-        gray("             "), gray(""),
-        gray("                   "), gray(""),
-        gray("                  "), gray(""),
-    );
-    println!(
-        "  {}{}          {}|{}                   {}|{}",
-        gray("namelookup:"), fmtb(namelookup_ms, use_color),
-        gray(""), gray(""),
-        gray(""), gray(""),
-    );
-    println!(
-        "                   {}{}               {}|{}",
-        gray("connect:"), fmtb(connect_ms, use_color),
-        gray(""), gray(""),
-    );
-    println!(
-        "                                    {}{}           |{}",
-        gray("starttransfer:"), fmtb(starttransfer_ms, use_color),
-        gray(""),
-    );
-    println!(
-        "                                                             {}{}",
-        gray("total:"),
-        fmtb(total_ms, use_color),
-    );
 }
