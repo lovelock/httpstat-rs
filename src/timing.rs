@@ -1,12 +1,14 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize)]
 pub struct CurlTimings {
-    pub namelookup: f64,
-    pub connect: f64,
-    pub appconnect: f64,
-    pub pretransfer: f64,
-    pub starttransfer: f64,
-    pub total: f64,
+    pub time_namelookup: f64,
+    pub time_connect: f64,
+    pub time_appconnect: f64,
+    pub time_pretransfer: f64,
+    pub time_redirect: f64,
+    pub time_starttransfer: f64,
+    pub time_total: f64,
     pub speed_download: f64,
     pub speed_upload: f64,
     pub remote_ip: String,
@@ -17,27 +19,27 @@ pub struct CurlTimings {
 
 impl CurlTimings {
     pub fn range_dns(&self) -> f64 {
-        self.namelookup
+        self.time_namelookup
     }
 
     pub fn range_connect(&self) -> f64 {
-        self.connect - self.namelookup
+        self.time_connect - self.time_namelookup
     }
 
     pub fn range_tls(&self) -> f64 {
-        self.pretransfer - self.connect
+        self.time_pretransfer - self.time_connect
     }
 
     pub fn range_server(&self) -> f64 {
-        self.starttransfer - self.pretransfer
+        self.time_starttransfer - self.time_pretransfer
     }
 
     pub fn range_transfer(&self) -> f64 {
-        self.total - self.starttransfer
+        self.time_total - self.time_starttransfer
     }
 
     pub fn is_https(&self) -> bool {
-        self.appconnect > 0.0
+        self.time_appconnect > 0.0
     }
 }
 
@@ -89,11 +91,11 @@ pub fn check_slo(slo: &[(String, u64)], timings: &CurlTimings) -> (bool, Vec<Slo
             .map(|(_, v)| *v)
             .unwrap();
         let actual = match timing_key {
-            "time_total" => timings.total,
-            "time_connect" => timings.connect,
-            "time_starttransfer" => timings.starttransfer,
-            "time_namelookup" => timings.namelookup,
-            "time_pretransfer" => timings.pretransfer,
+            "time_total" => timings.time_total,
+            "time_connect" => timings.time_connect,
+            "time_starttransfer" => timings.time_starttransfer,
+            "time_namelookup" => timings.time_namelookup,
+            "time_pretransfer" => timings.time_pretransfer,
             _ => 0.0,
         };
         let actual_ms = (actual * 1000.0) as u64;
@@ -205,11 +207,11 @@ pub fn build_json_result(
             tls: (t.range_tls() * 1000.0).round() as u64,
             server: (t.range_server() * 1000.0).round() as u64,
             transfer: (t.range_transfer() * 1000.0).round() as u64,
-            total: (t.total * 1000.0).round() as u64,
-            namelookup: (t.namelookup * 1000.0).round() as u64,
-            initial_connect: (t.connect * 1000.0).round() as u64,
-            pretransfer: (t.pretransfer * 1000.0).round() as u64,
-            starttransfer: (t.starttransfer * 1000.0).round() as u64,
+            total: (t.time_total * 1000.0).round() as u64,
+            namelookup: (t.time_namelookup * 1000.0).round() as u64,
+            initial_connect: (t.time_connect * 1000.0).round() as u64,
+            pretransfer: (t.time_pretransfer * 1000.0).round() as u64,
+            starttransfer: (t.time_starttransfer * 1000.0).round() as u64,
         },
         speed: SpeedInfo {
             download_kbs: (t.speed_download / 1024.0 * 10.0).round() / 10.0,
@@ -225,12 +227,13 @@ mod tests {
 
     fn make_timings() -> CurlTimings {
         CurlTimings {
-            namelookup: 0.005,
-            connect: 0.015,
-            appconnect: 0.030,
-            pretransfer: 0.030,
-            starttransfer: 0.080,
-            total: 0.100,
+            time_namelookup: 0.005,
+            time_connect: 0.015,
+            time_appconnect: 0.030,
+            time_pretransfer: 0.030,
+            time_redirect: 0.0,
+            time_starttransfer: 0.080,
+            time_total: 0.100,
             speed_download: 10240.0,
             speed_upload: 0.0,
             remote_ip: "93.184.216.34".to_string(),
@@ -279,7 +282,7 @@ mod tests {
     #[test]
     fn test_is_https_false() {
         let mut t = make_timings();
-        t.appconnect = 0.0;
+        t.time_appconnect = 0.0;
         assert!(!t.is_https());
     }
 
@@ -287,7 +290,7 @@ mod tests {
     fn test_ranges_sum_to_total() {
         let t = make_timings();
         let sum = t.range_dns() + t.range_connect() + t.range_tls() + t.range_server() + t.range_transfer();
-        assert!((sum - t.total).abs() < 1e-9);
+        assert!((sum - t.time_total).abs() < 1e-9);
     }
 
     // --- parse_slo ---

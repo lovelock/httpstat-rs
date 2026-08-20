@@ -36,11 +36,11 @@ pub fn print_pretty(
     let tls = (t.range_tls() * 1000.0).round() as i64;
     let server = (t.range_server() * 1000.0).round() as i64;
     let transfer = (t.range_transfer() * 1000.0).round() as i64;
-    let total_ms = (t.total * 1000.0).round() as i64;
-    let namelookup_ms = (t.namelookup * 1000.0).round() as i64;
-    let connect_ms = (t.connect * 1000.0).round() as i64;
-    let pretransfer_ms = (t.pretransfer * 1000.0).round() as i64;
-    let starttransfer_ms = (t.starttransfer * 1000.0).round() as i64;
+    let total_ms = (t.time_total * 1000.0).round() as i64;
+    let namelookup_ms = (t.time_namelookup * 1000.0).round() as i64;
+    let connect_ms = (t.time_connect * 1000.0).round() as i64;
+    let pretransfer_ms = (t.time_pretransfer * 1000.0).round() as i64;
+    let starttransfer_ms = (t.time_starttransfer * 1000.0).round() as i64;
 
     // IP info
     if opts.show_ip {
@@ -153,7 +153,7 @@ pub fn print_pretty(
             b(&format!("{:<7}", format!("{}ms", starttransfer_ms)))
         );
         println!(
-            "                                                                                 {}{}",
+            "                                                                                 {}{} |",
             b("total:"),
             b(&format!("{:<7}", format!("{}ms", total_ms)))
         );
