@@ -2,7 +2,7 @@
 
 Rust rewrite of [httpstat](https://github.com/reorx/httpstat) — curl statistics made simple.
 
-Solves the cold start problem of the Python version: no subprocess fork/exec, calls libcurl in-process via FFI. Self-contained binary with no runtime dependencies.
+Rewrite of the Python version in Rust for better performance. Uses curl subprocess (like the original) to support all curl options natively.
 
 ## Features
 
@@ -99,6 +99,7 @@ httpstat https://example.com --format json --save result.json
 | `HTTPSTAT_SHOW_IP` | `true` | Show remote/local IP and port |
 | `HTTPSTAT_SHOW_SPEED` | `false` | Show download/upload speed |
 | `HTTPSTAT_SAVE_BODY` | `true` | Save body to temp file |
+| `HTTPSTAT_CURL_BIN` | `curl` | Path to curl binary |
 | `HTTPSTAT_DEBUG` | `false` | Show debug logs |
 | `HTTPSTAT_METRICS_ONLY` | `false` | Equivalent to `--format json` (backward compat) |
 | `NO_COLOR` | — | Disable ANSI color output |
