@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct CurlTimings {
     pub time_namelookup: f64,
     pub time_connect: f64,
