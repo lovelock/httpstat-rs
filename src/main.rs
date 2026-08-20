@@ -160,7 +160,7 @@ fn run() -> i32 {
     let curl_args = args; // everything else
 
     // validate curl args — exclude options httpstat uses internally
-    let exclude_options = ["-w", "--write-out", "-D", "--dump-header", "-o", "--output", "-s", "--silent"];
+    let exclude_options = ["-w", "--write-out", "-D", "--dump-header", "-o", "--output", "-s", "-S", "--silent"];
     for arg in &curl_args {
         if exclude_options.contains(&arg.as_str()) {
             eprintln!("Error: {} is not allowed in extra curl args", arg);
@@ -230,6 +230,7 @@ fn run() -> i32 {
     let headers_text = headers_text.trim().to_string();
 
     // read body
+    let body_path_str = body_path.to_string_lossy().to_string();
     let body_bytes = fs::read(&body_path).unwrap_or_default();
     let body_text = String::from_utf8_lossy(&body_bytes).to_string();
     let body_total_len = body_bytes.len();
@@ -239,18 +240,11 @@ fn run() -> i32 {
         timings.speed_download = body_total_len as f64 / timings.time_total;
     }
 
-    // save body to temp file if needed
+    // persist body temp file if saving, or clean it up
     let body_file_path = if save_body {
-        let mut tmp = std::env::temp_dir();
-        tmp.push("httpstat_body_XXXXXX");
-        let path_str = tmp.to_string_lossy().to_string();
-        if let Ok(mut f) = fs::File::create(&path_str) {
-            let _ = f.write_all(&body_bytes);
-            Some(path_str)
-        } else {
-            None
-        }
+        body_path.keep().ok().map(|p| p.to_string_lossy().to_string())
     } else {
+        let _ = fs::remove_file(&body_path_str);
         None
     };
 
@@ -309,16 +303,6 @@ fn run() -> i32 {
             if let Ok(mut f) = fs::File::create(path) {
                 let _ = writeln!(f, "{}", serde_json::to_string_pretty(&result).unwrap());
             }
-        }
-    }
-
-    // cleanup body file
-    if !save_body {
-        if let Some(ref path) = body_file_path {
-            if is_debug {
-                eprintln!("rm body file {}", path);
-            }
-            let _ = fs::remove_file(path);
         }
     }
 
