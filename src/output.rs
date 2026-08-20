@@ -84,7 +84,11 @@ pub fn print_pretty(
         if let Some(body) = &opts.body_content {
             let body_len = opts.body_total_len.unwrap_or(body.len());
             if body_len > body_limit {
-                print!("{}{}", &body[..body_limit], colorize("...", CYAN, use_color));
+                print!(
+                    "{}{}",
+                    &body[..body_limit],
+                    colorize("...", CYAN, use_color)
+                );
                 println!();
                 let mut msg = format!(
                     "{} is truncated ({} out of {})",
@@ -104,11 +108,7 @@ pub fn print_pretty(
         }
     } else if opts.save_body {
         if let Some(path) = &opts.body_path {
-            println!(
-                "{} stored in: {}",
-                colorize("Body", GREEN, use_color),
-                path,
-            );
+            println!("{} stored in: {}", colorize("Body", GREEN, use_color), path,);
         }
     }
 
@@ -118,36 +118,76 @@ pub fn print_pretty(
     let a = |ms: i64| format!("{:^7}", format!("{}ms", ms));
 
     if t.is_https() {
-        println!("  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer");
-        println!("[   {}  |     {}    |    {}    |      {}      |      {}     ]",
-            b(&a(dns)), b(&a(connect)), b(&a(tls)), b(&a(server)), b(&a(transfer)));
+        println!(
+            "  DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer"
+        );
+        println!(
+            "[   {}  |     {}    |    {}    |      {}      |      {}     ]",
+            b(&a(dns)),
+            b(&a(connect)),
+            b(&a(tls)),
+            b(&a(server)),
+            b(&a(transfer))
+        );
         // Pipe row
         println!("             |                |               |                   |                  |");
         // Label rows — pipe at col 30, 46, 66, 85
-        println!("    {}{}        |               |                   |                  |",
-            b("namelookup:"), b(&format!("{:<7}", format!("{}ms", namelookup_ms))));
-        println!("                        {}{}       |                   |                  |",
-            b("connect:"), b(&format!("{:<7}", format!("{}ms", connect_ms))));
-        println!("                                    {}{}           |                  |",
-            b("pretransfer:"), b(&format!("{:<7}", format!("{}ms", pretransfer_ms))));
-        println!("                                                      {}{}          |",
-            b("starttransfer:"), b(&format!("{:<7}", format!("{}ms", starttransfer_ms))));
-        println!("                                                                                 {}{}",
-            b("total:"), b(&format!("{:<7}", format!("{}ms", total_ms))));
+        println!(
+            "    {}{}        |               |                   |                  |",
+            b("namelookup:"),
+            b(&format!("{:<7}", format!("{}ms", namelookup_ms)))
+        );
+        println!(
+            "                        {}{}       |                   |                  |",
+            b("connect:"),
+            b(&format!("{:<7}", format!("{}ms", connect_ms)))
+        );
+        println!(
+            "                                    {}{}           |                  |",
+            b("pretransfer:"),
+            b(&format!("{:<7}", format!("{}ms", pretransfer_ms)))
+        );
+        println!(
+            "                                                      {}{}          |",
+            b("starttransfer:"),
+            b(&format!("{:<7}", format!("{}ms", starttransfer_ms)))
+        );
+        println!(
+            "                                                                                 {}{}",
+            b("total:"),
+            b(&format!("{:<7}", format!("{}ms", total_ms)))
+        );
     } else {
         // HTTP template (no TLS column)
         println!("  DNS Lookup   TCP Connection   Server Processing   Content Transfer");
-        println!("[   {}  |     {}    |      {}      |      {}     ]",
-            b(&a(dns)), b(&a(connect)), b(&a(server)), b(&a(transfer)));
+        println!(
+            "[   {}  |     {}    |      {}      |      {}     ]",
+            b(&a(dns)),
+            b(&a(connect)),
+            b(&a(server)),
+            b(&a(transfer))
+        );
         println!("             |                |                   |                  |");
-        println!("    {}{}        |                   |                  |",
-            b("namelookup:"), b(&format!("{:<7}", format!("{}ms", namelookup_ms))));
-        println!("                        {}{}           |                  |",
-            b("connect:"), b(&format!("{:<7}", format!("{}ms", connect_ms))));
-        println!("                                    {}{}           |",
-            b("starttransfer:"), b(&format!("{:<7}", format!("{}ms", starttransfer_ms))));
-        println!("                                                             {}{}",
-            b("total:"), b(&format!("{:<7}", format!("{}ms", total_ms))));
+        println!(
+            "    {}{}        |                   |                  |",
+            b("namelookup:"),
+            b(&format!("{:<7}", format!("{}ms", namelookup_ms)))
+        );
+        println!(
+            "                        {}{}           |                  |",
+            b("connect:"),
+            b(&format!("{:<7}", format!("{}ms", connect_ms)))
+        );
+        println!(
+            "                                    {}{}            |",
+            b("starttransfer:"),
+            b(&format!("{:<7}", format!("{}ms", starttransfer_ms)))
+        );
+        println!(
+            "                                                             {}{}",
+            b("total:"),
+            b(&format!("{:<7}", format!("{}ms", total_ms)))
+        );
     }
 
     // Speed
@@ -166,7 +206,10 @@ pub fn print_slo_violations(violations: &[crate::timing::SloViolation], use_colo
         println!(
             "{}",
             colorize(
-                &format!("SLO VIOLATION: {} = {}ms (threshold: {}ms)", v.key, v.actual_ms, v.threshold_ms),
+                &format!(
+                    "SLO VIOLATION: {} = {}ms (threshold: {}ms)",
+                    v.key, v.actual_ms, v.threshold_ms
+                ),
                 RED,
                 use_color,
             )
