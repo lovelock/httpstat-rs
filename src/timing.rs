@@ -90,7 +90,7 @@ pub fn check_slo(slo: &[(String, u64)], timings: &CurlTimings) -> (bool, Vec<Slo
             .iter()
             .find(|(k, _)| k == key)
             .map(|(_, v)| *v)
-            .unwrap();
+            .expect("SLO key not in SLO_KEY_MAP");
         let actual = match timing_key {
             "time_total" => timings.time_total,
             "time_connect" => timings.time_connect,

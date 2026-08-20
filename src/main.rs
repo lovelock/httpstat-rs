@@ -59,7 +59,7 @@ fn print_help() {
         "                which are already used internally.\n",
         "  -h --help     show this screen.\n",
         "  --version     show version.\n",
-        "  -f --format   output format: pretty, json, jsonl. Default is `pretty`.\n",
+        "  --format      output format: pretty, json, jsonl. Default is `pretty`.\n",
         "  --slo         SLO thresholds as key=value pairs, e.g. `total=500,connect=100`.\n",
         "                Valid keys: total, connect, ttfb, dns, tls.\n",
         "                Exits with code 4 on violation.\n",
@@ -103,7 +103,6 @@ fn run() -> i32 {
 
     // pop httpstat-specific flags
     let mut output_format = pop_arg(&mut args, "--format", true)
-        .or_else(|| pop_arg(&mut args, "-f", true))
         .unwrap_or_else(|| "pretty".to_string());
     let slo_spec = pop_arg(&mut args, "--slo", true);
     let save_path = pop_arg(&mut args, "--save", true);
@@ -230,7 +229,6 @@ fn run() -> i32 {
     let headers_text = headers_text.trim().to_string();
 
     // read body
-    let body_path_str = body_path.to_string_lossy().to_string();
     let body_bytes = fs::read(&body_path).unwrap_or_default();
     let body_text = String::from_utf8_lossy(&body_bytes).to_string();
     let body_total_len = body_bytes.len();
@@ -244,7 +242,7 @@ fn run() -> i32 {
     let body_file_path = if save_body {
         body_path.keep().ok().map(|p| p.to_string_lossy().to_string())
     } else {
-        let _ = fs::remove_file(&body_path_str);
+        drop(body_path);
         None
     };
 
@@ -271,7 +269,9 @@ fn run() -> i32 {
 
         if let Some(ref path) = save_path {
             if let Ok(mut f) = fs::File::create(path) {
-                let _ = writeln!(f, "{}", output_text);
+                if let Err(e) = writeln!(f, "{}", output_text) {
+                    eprintln!("Warning: failed to write to {}: {}", path, e);
+                }
             }
         }
         return exit_code;
@@ -288,20 +288,20 @@ fn run() -> i32 {
         body_total_len: Some(body_total_len),
     };
 
-    output::print_pretty(&timings, "", &headers_text, &pretty_opts, use_color);
+    output::print_pretty(&timings, &headers_text, &pretty_opts, use_color);
 
     if let Some((false, ref violations)) = slo_result {
         output::print_slo_violations(violations, use_color);
     }
 
     // save pretty output as json
-    if save_path.is_some() {
+    if let Some(ref path) = save_path {
         let result = timing::build_json_result(
             &url, &timings, &headers_text, slo_result, exit_code,
         );
-        if let Some(ref path) = save_path {
-            if let Ok(mut f) = fs::File::create(path) {
-                let _ = writeln!(f, "{}", serde_json::to_string_pretty(&result).unwrap());
+        if let Ok(mut f) = fs::File::create(path) {
+            if let Err(e) = writeln!(f, "{}", serde_json::to_string_pretty(&result).unwrap()) {
+                eprintln!("Warning: failed to write to {}: {}", path, e);
             }
         }
     }

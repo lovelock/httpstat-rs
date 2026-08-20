@@ -26,7 +26,6 @@ pub struct PrettyOptions {
 
 pub fn print_pretty(
     t: &CurlTimings,
-    _status_line: &str,
     headers_text: &str,
     opts: &PrettyOptions,
     use_color: bool,
